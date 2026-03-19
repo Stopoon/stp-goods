@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STP's Goods</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f13;
+      color: #e2e2e2;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── LOADING ── */
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: #0f0f13;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      gap: 14px;
+      transition: opacity 0.3s;
+    }
+    #loading.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 38px; height: 38px;
+      border: 3px solid #2a2a3e;
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { color: #555; font-size: 0.8rem; letter-spacing: 0.05em; }
+    #loading .err { color: #f87171; text-align: center; line-height: 1.6; font-size: 0.82rem; }
+
+    /* ── BANNER ── */
+    header {
+      width: 100%;
+      padding: 28px 20px 20px;
+      text-align: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-bottom: 1px solid #2a2a3e;
+      position: relative;
+    }
+    header h1 {
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      background: linear-gradient(90deg, #a78bfa, #60a5fa, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p {
+      margin-top: 6px;
+      font-size: 0.78rem;
+      color: #555;
+      letter-spacing: 0.05em;
+    }
+    #sync-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #34d399;
+      margin-left: 7px;
+      vertical-align: middle;
+      box-shadow: 0 0 6px #34d399;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    #sync-dot.off { background: #555; box-shadow: none; animation: none; }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.35; }
+    }
+
+    /* ── GRID ── */
+    main {
+      width: 100%;
+      max-width: 700px;
+      padding: 28px 16px 120px;
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    /* ── CARD ── */
+    .card {
+      position: relative;
+      background: #1a1a2e;
+      border: 1px solid #2a2a3e;
+      border-radius: 14px;
+      padding: 20px 16px;
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+      user-select: none;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: #6366f1;
+      box-shadow: 0 8px 24px rgba(99,102,241,0.2);
+    }
+    .card.blank .card-icon {
+      font-size: 2rem;
+      opacity: 0.2;
+      margin-bottom: 6px;
+    }
+    .card.blank .card-label {
+      font-size: 0.72rem;
+      color: #444;
+      letter-spacing: 0.06em;
+    }
+    .card.filled .card-icon {
+      font-size: 1.9rem;
+      margin-bottom: 8px;
+    }
+    .card.filled .card-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #c4c4d4;
+      text-align: center;
+      word-break: break-all;
+      line-height: 1.3;
+    }
+
+    /* admin buttons */
+    .card .admin-btns {
+      display: none;
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      gap: 4px;
+    }
+    body.admin-mode .card .admin-btns { display: flex; }
+    .admin-btns button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 3px 5px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .admin-btns .btn-edit { color: #60a5fa; }
+    .admin-btns .btn-del  { color: #f87171; }
+    .admin-btns button:hover { background: rgba(255,255,255,0.08); }
+
+    /* ── ADD BUTTON ── */
+    #add-btn {
+      position: fixed;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 14px 32px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(99,102,241,0.45);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.15s, box-shadow 0.15s;
+      z-index: 10;
+    }
+    #add-btn:hover {
+      transform: translateX(-50%) translateY(-2px);
+      box-shadow: 0 8px 28px rgba(99,102,241,0.55);
+    }
+    #add-btn:active { transform: translateX(-50%) scale(0.97); }
+    #add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── FOOTER ── */
+    footer {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      text-align: center;
+      padding: 10px;
+      background: #0f0f13;
+      border-top: 1px solid #1e1e2e;
+      z-index: 10;
+    }
+    footer a {
+      font-size: 0.72rem;
+      color: #333;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    footer a:hover { color: #6366f1; }
+    body.admin-mode footer #admin-link { color: #6366f1; }
+    #admin-exit {
+      display: none;
+      font-size: 0.72rem;
+      color: #f87171;
+      cursor: pointer;
+      margin-left: 12px;
+      background: none;
+      border: none;
+    }
+    body.admin-mode #admin-exit { display: inline; }
+
+    /* ── MODAL ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: #1a1a2e;
+      border: 1px solid #2e2e4e;
+      border-radius: 18px;
+      padding: 30px 28px 24px;
+      width: min(380px, 92vw);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      animation: pop 0.22s ease;
+    }
+    @keyframes pop {
+      from { transform: scale(0.92); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+    .modal h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #a78bfa;
+      letter-spacing: 0.04em;
+    }
+    .modal label {
+      display: block;
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 5px;
+      letter-spacing: 0.04em;
+    }
+    .modal input {
+      width: 100%;
+      background: #0f0f18;
+      border: 1px solid #2e2e4e;
+      border-radius: 9px;
+      padding: 11px 13px;
+      color: #e2e2e2;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+      outline: none;
+      transition: border-color 0.18s;
+    }
+    .modal input:focus { border-color: #6366f1; }
+    .char-count {
+      font-size: 0.7rem;
+      color: #555;
+      text-align: right;
+      margin-top: -13px;
+      margin-bottom: 14px;
+    }
+    .char-count.warn { color: #f87171; }
+    .modal-btns {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .modal-btns button {
+      flex: 1;
+      padding: 11px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .modal-btns button:hover { opacity: 0.85; }
+    .btn-save   { background: linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; }
+    .btn-cancel { background: #2a2a3e; color: #aaa; }
+    #pw-modal input { letter-spacing: 0.2em; }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e1e3e;
+      border: 1px solid #4444aa;
+      color: #c4c4ff;
+      padding: 10px 20px;
+      border-radius: 50px;
+      font-size: 0.8rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 200;
+      white-space: nowrap;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── MOBILE ── */
+    @media (max-width: 420px) {
+      .card { min-height: 95px; padding: 16px 12px; }
+      .card.filled .card-title { font-size: 0.76rem; }
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25%      { transform: translateX(-8px); }
+      75%      { transform: translateX(8px); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Firebase 연결 중...</p>
+</div>
+
+<!-- BANNER -->
+<header>
+  <h1>STP's Goods <span id="sync-dot" class="off" title="실시간 동기화"></span></h1>
+  <p>나만의 즐겨찾기 모음</p>
+</header>
+
+<!-- GRID -->
+<main>
+  <div id="grid"></div>
+</main>
+
+<!-- ADD BUTTON -->
+<button id="add-btn">＋ 행 추가</button>
+
+<!-- FOOTER -->
+<footer>
+  <a href="#" id="admin-link">관리자 모드</a>
+  <button id="admin-exit">✕ 종료</button>
+</footer>
+
+<!-- CARD MODAL -->
+<div class="overlay" id="card-overlay">
+  <div class="modal">
+    <h2 id="card-modal-title">카드 설정</h2>
+    <label>제목 (10자 이내)</label>
+    <input id="input-title" type="text" placeholder="제목을 입력하세요" maxlength="10" />
+    <div class="char-count" id="char-count">0 / 10</div>
+    <label>URL</label>
+    <input id="input-url" type="url" placeholder="https://..." />
+    <div class="modal-btns">
+      <button class="btn-cancel" id="card-cancel">취소</button>
+      <button class="btn-save"   id="card-save">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORD MODAL -->
+<div class="overlay" id="pw-overlay">
+  <div class="modal" id="pw-modal">
+    <h2>관리자 인증</h2>
+    <label>비밀번호</label>
+    <input id="input-pw" type="password" placeholder="••••" maxlength="10" />
+    <div class="modal-btns">
+      <button class="btn-cancel" id="pw-cancel">취소</button>
+      <button class="btn-save"   id="pw-confirm">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ══ Firebase SDK (compat) ══ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<script>
+  /* ================================================================
+   *  🔥 FIREBASE 설정 — 아래 값을 본인 Firebase 프로젝트 값으로 교체
+   * ================================================================ */
+  const firebaseConfig = {
+    apiKey:            "AIzaSyB2MpV3Ru4kkG8oxZa6LKXru69JqcLbC5I",
+    authDomain:        "stp-goods-8cafd.firebaseapp.com",
+    projectId:         "stp-goods-8cafd",
+    storageBucket:     "stp-goods-8cafd.firebasestorage.app",
+    messagingSenderId: "362923654855",
+    appId:             "1:362923654855:web:19828c0ac17f58d29d88e2"
+  };
+  /* ================================================================ */
+
+  firebase.initializeApp(firebaseConfig);
+  const db      = firebase.firestore();
+  const DOC_REF = db.collection('stp_goods').doc('main');
+
+  /* ── STATE ── */
+  const ADMIN_PW = '0320';
+  let cards      = [];
+  let editIndex  = -1;
+  let isAdmin    = false;
+  let firstLoad  = true;
+
+  /* ── REAL-TIME LISTENER ── */
+  DOC_REF.onSnapshot(
+    snap => {
+      if (snap.exists) {
+        cards = snap.data().cards || [];
+      } else {
+        // 최초 접속 시 빈 카드 10개로 초기화
+        cards = Array(10).fill(null);
+        DOC_REF.set({ cards });
+      }
+      while (cards.length < 10) cards.push(null);
+      if (cards.length % 2 !== 0) cards.push(null);
+
+      if (firstLoad) {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('sync-dot').classList.remove('off');
+        document.getElementById('add-btn').disabled = false;
+        firstLoad = false;
+      }
+      render();
+    },
+    err => {
+      const el = document.getElementById('loading');
+      el.querySelector('.spinner').style.display = 'none';
+      el.querySelector('p').style.display = 'none';
+      el.insertAdjacentHTML('beforeend',
+        `<div class="err">🔴 Firebase 연결 실패<br>${err.message}<br><br>
+         firebaseConfig 값을 확인해 주세요.</div>`);
+    }
+  );
+
+  /* ── SAVE TO FIRESTORE ── */
+  async function save() {
+    try {
+      await DOC_REF.set({ cards });
+    } catch (e) {
+      toast('저장 실패: ' + e.message);
+    }
+  }
+
+  /* ── RENDER ── */
+  function render() {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    cards.forEach((c, i) => {
+      const div = document.createElement('div');
+      div.className = 'card ' + (c ? 'filled' : 'blank');
+      div.dataset.index = i;
+
+      if (c) {
+        div.innerHTML = `
+          <span class="card-icon">🔗</span>
+          <span class="card-title">${esc(c.title)}</span>
+          <div class="admin-btns">
+            <button class="btn-edit" data-i="${i}" title="수정">✏️</button>
+            <button class="btn-del"  data-i="${i}" title="삭제">🗑️</button>
+          </div>`;
+        div.addEventListener('click', onFilledClick);
+      } else {
+        div.innerHTML = `
+          <span class="card-icon">＋</span>
+          <span class="card-label">BLANK</span>`;
+        div.addEventListener('click', () => openCardModal(i));
+      }
+      grid.appendChild(div);
+    });
+
+    document.querySelectorAll('.btn-edit').forEach(b =>
+      b.addEventListener('click', e => { e.stopPropagation(); openCardModal(+b.dataset.i); }));
+    document.querySelectorAll('.btn-del').forEach(b =>
+      b.addEventListener('click', e => { e.stopPropagation(); deleteCard(+b.dataset.i); }));
+  }
+
+  function onFilledClick() {
+    if (isAdmin) return;
+    const c = cards[+this.dataset.index];
+    if (!c) return;
+    let url = c.url;
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    window.open(url, '_blank', 'noopener');
+  }
+
+  /* ── ADD ROW ── */
+  const addBtn = document.getElementById('add-btn');
+  addBtn.disabled = true; // 로딩 완료 전 비활성화
+
+  addBtn.addEventListener('click', async () => {
+    cards.push(null, null);
+    await save();
+    toast('행이 추가되었습니다');
+  });
+
+  /* ── CARD MODAL ── */
+  const cardOverlay    = document.getElementById('card-overlay');
+  const inputTitle     = document.getElementById('input-title');
+  const inputUrl       = document.getElementById('input-url');
+  const charCount      = document.getElementById('char-count');
+  const cardModalTitle = document.getElementById('card-modal-title');
+
+  inputTitle.addEventListener('input', updateChar);
+  function updateChar() {
+    const n = inputTitle.value.length;
+    charCount.textContent = `${n} / 10`;
+    charCount.classList.toggle('warn', n >= 10);
+  }
+
+  function openCardModal(i) {
+    editIndex = i;
+    const c = cards[i];
+    cardModalTitle.textContent = c ? '카드 수정' : '카드 설정';
+    inputTitle.value = c ? c.title : '';
+    inputUrl.value   = c ? c.url   : '';
+    updateChar();
+    cardOverlay.classList.add('open');
+    setTimeout(() => inputTitle.focus(), 50);
+  }
+
+  document.getElementById('card-cancel').addEventListener('click', closeCardModal);
+  cardOverlay.addEventListener('click', e => { if (e.target === cardOverlay) closeCardModal(); });
+
+  function closeCardModal() {
+    cardOverlay.classList.remove('open');
+    editIndex = -1;
+  }
+
+  document.getElementById('card-save').addEventListener('click', async () => {
+    const title = inputTitle.value.trim();
+    const url   = inputUrl.value.trim();
+    if (!title) { inputTitle.focus(); shake(inputTitle); return; }
+    if (!url)   { inputUrl.focus();   shake(inputUrl);   return; }
+    cards[editIndex] = { title, url };
+    closeCardModal();
+    await save();
+    toast('저장되었습니다');
+  });
+
+  [inputTitle, inputUrl].forEach(el =>
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('card-save').click();
+    }));
+
+  /* ── DELETE ── */
+  async function deleteCard(i) {
+    if (!confirm('카드를 삭제할까요?')) return;
+    cards[i] = null;
+    await save();
+    toast('삭제되었습니다');
+  }
+
+  /* ── ADMIN ── */
+  const pwOverlay = document.getElementById('pw-overlay');
+  const inputPw   = document.getElementById('input-pw');
+
+  document.getElementById('admin-link').addEventListener('click', e => {
+    e.preventDefault();
+    if (isAdmin) return;
+    inputPw.value = '';
+    pwOverlay.classList.add('open');
+    setTimeout(() => inputPw.focus(), 50);
+  });
+
+  document.getElementById('pw-cancel').addEventListener('click',
+    () => pwOverlay.classList.remove('open'));
+  pwOverlay.addEventListener('click',
+    e => { if (e.target === pwOverlay) pwOverlay.classList.remove('open'); });
+
+  document.getElementById('pw-confirm').addEventListener('click', confirmPw);
+  inputPw.addEventListener('keydown', e => { if (e.key === 'Enter') confirmPw(); });
+
+  function confirmPw() {
+    if (inputPw.value === ADMIN_PW) {
+      isAdmin = true;
+      document.body.classList.add('admin-mode');
+      pwOverlay.classList.remove('open');
+      toast('관리자 모드 활성화');
+    } else {
+      shake(inputPw);
+      inputPw.value = '';
+      toast('비밀번호가 틀렸습니다');
+    }
+  }
+
+  document.getElementById('admin-exit').addEventListener('click', () => {
+    isAdmin = false;
+    document.body.classList.remove('admin-mode');
+    toast('관리자 모드 종료');
+  });
+
+  /* ── HELPERS ── */
+  function esc(s) {
+    return s.replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function shake(el) {
+    el.style.animation = 'none';
+    el.getBoundingClientRect();
+    el.style.animation = 'shake 0.3s ease';
+    el.addEventListener('animationend', () => el.style.animation = '', { once: true });
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+</script>
+</body>
+</html>
