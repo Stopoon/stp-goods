@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="pin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f472b6"/>
+      <stop offset="100%" stop-color="#e11d48"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 배경 원형 -->
+  <rect width="32" height="32" rx="8" fill="url(#bg)"/>
+
+  <!-- 지도 접힌 선 -->
+  <polyline points="11,6 11,26" stroke="rgba(255,255,255,0.25)" stroke-width="1" stroke-dasharray="2,2"/>
+  <polyline points="21,6 21,26" stroke="rgba(255,255,255,0.25)" stroke-width="1" stroke-dasharray="2,2"/>
+
+  <!-- 지도 모양 (접힌 종이) -->
+  <polygon points="4,8 11,6 21,9 28,7 28,24 21,26 11,23 4,25"
+           fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.5)" stroke-width="0.8" stroke-linejoin="round"/>
+
+  <!-- 핀 몸통 -->
+  <path d="M16 8 C13.8 8 12 9.8 12 12 C12 15.5 16 20 16 20 C16 20 20 15.5 20 12 C20 9.8 18.2 8 16 8 Z"
+        fill="url(#pin)" stroke="rgba(255,255,255,0.6)" stroke-width="0.5"/>
+
+  <!-- 핀 중심 원 -->
+  <circle cx="16" cy="12" r="2.2" fill="white" opacity="0.95"/>
+</svg>
